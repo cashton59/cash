@@ -1,95 +1,107 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>AI Pong Test</title>
+    <title>Arcade Claw Master</title>
     <style>
-        body { background: #222; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; color: white; font-family: sans-serif; }
-        canvas { border: 4px solid #fff; background: #000; box-shadow: 0 0 20px rgba(255,255,255,0.2); }
-        .info { position: absolute; top: 20px; text-align: center; }
+        body { margin: 0; background: #000; overflow: hidden; font-family: sans-serif; }
+        #game-container { position: relative; width: 600px; height: 600px; margin: 20px auto; border: 10px solid #333; }
+        /* Using a realistic arcade background */
+        #background { width: 100%; height: 100%; background: url('https://images.unsplash.com/photo-1511882150382-421056c89033?q=80&w=600&h=600&auto=format&fit=crop') center/cover; position: absolute; }
+        #claw { position: absolute; width: 60px; height: 80px; background: #silver; border: 3px solid #666; top: 0; left: 270px; transition: top 1s ease-in-out; border-radius: 0 0 20px 20px; z-index: 10; }
+        .ball { position: absolute; width: 40px; height: 40px; border-radius: 50%; bottom: 80px; box-shadow: inset -5px -5px 10px rgba(0,0,0,0.5); }
+        #bucket { position: absolute; bottom: 10px; left: 10px; width: 80px; height: 80px; border: 5px dashed gold; color: gold; text-align: center; line-height: 80px; }
+        #controls { text-align: center; color: white; margin-top: 10px; }
+        .status { position: absolute; top: 10px; right: 10px; color: #0f0; font-weight: bold; background: rgba(0,0,0,0.7); padding: 10px; }
     </style>
 </head>
 <body>
-    <div class="info">
-        <h1>PONG</h1>
-        <p>Use your <b>Mouse</b> to move the left paddle</p>
-    </div>
-    <canvas id="pong" width="800" height="400"></canvas>
+
+<div id="game-container">
+    <div id="background"></div>
+    <div id="claw"></div>
+    <div id="bucket">WIN</div>
+    <div class="status" id="stats">Wins: 0 | Attempts: 0</div>
+</div>
+
+<div id="controls">
+    <p>Use <b>Left/Right Arrows</b> to move claw. Press <b>SPACE</b> to Drop.</p>
+    <label>Win Rate: </label>
+    <input type="number" id="winRateInput" value="30" style="width: 50px;"> %
+</div>
 
 <script>
-const canvas = document.getElementById("pong");
-const ctx = canvas.getContext("2d");
+    const claw = document.getElementById('claw');
+    const stats = document.getElementById('stats');
+    const winRateInput = document.getElementById('winRateInput');
+    let clawX = 270;
+    let wins = 0;
+    let attempts = 0;
+    let isDropping = false;
 
-// Game objects
-const ball = { x: 400, y: 200, radius: 10, speed: 5, dx: 5, dy: 5 };
-const user = { x: 0, y: 150, width: 10, height: 100, score: 0 };
-const computer = { x: 790, y: 150, width: 10, height: 100, score: 0 };
-
-// Control the paddle with mouse
-canvas.addEventListener("mousemove", (e) => {
-    let rect = canvas.getBoundingClientRect();
-    user.y = e.clientY - rect.top - user.height/2;
-});
-
-function drawRect(x, y, w, h, color) {
-    ctx.fillStyle = color;
-    ctx.fillRect(x, y, w, h);
-}
-
-function drawCircle(x, y, r, color) {
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI*2, false);
-    ctx.closePath();
-    ctx.fill();
-}
-
-function resetBall() {
-    ball.x = canvas.width/2;
-    ball.y = canvas.height/2;
-    ball.dx = -ball.dx;
-    ball.speed = 5;
-}
-
-function update() {
-    ball.x += ball.dx;
-    ball.y += ball.dy;
-
-    // Simple AI for computer paddle
-    computer.y += (ball.y - (computer.y + computer.height/2)) * 0.1;
-
-    // Wall collision
-    if(ball.y + ball.radius > canvas.height || ball.y - ball.radius < 0) ball.dy = -ball.dy;
-
-    // Paddle collision
-    let player = (ball.x < canvas.width/2) ? user : computer;
-    if(collision(ball, player)) {
-        ball.dx = -ball.dx;
-        ball.speed += 0.5; // Speed up the game
+    // Create 10 balls at random spots
+    for(let i=0; i<10; i++) {
+        const b = document.createElement('div');
+        b.className = 'ball';
+        b.style.left = (150 + Math.random() * 300) + 'px';
+        b.style.backgroundColor = `hsl(${Math.random() * 360}, 70%, 50%)`;
+        b.id = 'ball-' + i;
+        document.getElementById('game-container').appendChild(b);
     }
 
-    // Scoring
-    if(ball.x - ball.radius < 0) { computer.score++; resetBall(); }
-    else if(ball.x + ball.radius > canvas.width) { user.score++; resetBall(); }
-}
+    document.addEventListener('keydown', (e) => {
+        if(isDropping) return;
+        if(e.key === 'ArrowLeft' && clawX > 100) clawX -= 15;
+        if(e.key === 'ArrowRight' && clawX < 500) clawX += 15;
+        if(e.key === ' ') dropClaw();
+        claw.style.left = clawX + 'px';
+    });
 
-function collision(b, p) {
-    return b.x < p.x + p.width && b.x + b.radius > p.x && b.y < p.y + p.height && b.y + b.radius > p.y;
-}
+    function dropClaw() {
+        isDropping = true;
+        attempts++;
+        claw.style.top = "400px";
 
-function render() {
-    drawRect(0, 0, canvas.width, canvas.height, "#000"); // Clear
-    drawRect(user.x, user.y, user.width, user.height, "#fff");
-    drawRect(computer.x, computer.y, computer.width, computer.height, "#fff");
-    drawCircle(ball.x, ball.y, ball.radius, "#fff");
-    
-    // Draw Scores
-    ctx.font = "45px Arial";
-    ctx.fillText(user.score, canvas.width/4, canvas.height/5);
-    ctx.fillText(computer.score, 3*canvas.width/4, canvas.height/5);
-}
+        setTimeout(() => {
+            checkCatch();
+            claw.style.top = "0px";
+            setTimeout(() => { isDropping = false; }, 1000);
+            updateStats();
+        }, 1000);
+    }
 
-function game() { update(); render(); }
-setInterval(game, 1000/60);
+    function checkCatch() {
+        const winChance = parseInt(winRateInput.value) / 100;
+        const roll = Math.random();
+
+        // Logic: Is the claw over a ball?
+        const balls = document.querySelectorAll('.ball');
+        balls.forEach(ball => {
+            const bx = parseInt(ball.style.left);
+            if(Math.abs(bx - clawX) < 30) {
+                if(roll < winChance) {
+                    // WINNER: Animate ball to bucket
+                    ball.style.transition = "all 1s ease-in-out";
+                    ball.style.bottom = "500px";
+                    ball.style.left = clawX + "px";
+                    setTimeout(() => {
+                        ball.style.left = "30px";
+                        ball.style.bottom = "30px";
+                        wins++;
+                        updateStats();
+                    }, 1000);
+                } else {
+                    // RIGGED: Claw slips!
+                    ball.style.bottom = "100px";
+                    setTimeout(() => { ball.style.bottom = "80px"; }, 200)
+                    alert("Claw slipped! Try again.");
+                }
+            }
+        });
+    }
+
+    function updateStats() {
+        stats.innerText = `Wins: ${wins} | Attempts: ${attempts}`;
+    }
 </script>
 </body>
 </html>
